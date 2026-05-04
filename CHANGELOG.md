@@ -2,6 +2,15 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.6] - 2026-05-04
+
+### Fixed
+- Rewrote .zshrc template using heredoc (`<< 'ZSHRCEOF'`) instead of
+  single-quoted string with `'"'"'` escaping -- eliminated broken alias
+  rendering (`no such file or directory: /oh-my-zsh.sh`, sed errors)
+- All aliases, zstyle quotes, and special characters now render correctly
+  in the generated .zshrc
+
 ## [0.5.5] - 2026-05-04
 
 ### Added
