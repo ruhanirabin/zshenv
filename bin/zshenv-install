@@ -84,6 +84,45 @@ source $ZSH/oh-my-zsh.sh
 alias zshconfig="nano ~/.zshrc"
 alias ohmyzsh="nano ~/.oh-my-zsh"
 
+# ── Navigation ──────────────────────────────────────────────────────────────
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias -- -='cd -'
+
+# ── Directory operations ────────────────────────────────────────────────────
+alias md='mkdir -p'
+take() { mkdir -p "$1" && cd "$1"; }
+
+# ── Listing ─────────────────────────────────────────────────────────────────
+alias l='ls -lAh --color=auto'
+alias la='ls -A --color=auto'
+alias ll='ls -lh --color=auto'
+alias lsd='ls -d */'
+alias lt='ls -lt --color=auto | head -20'    # newest first, top 20
+alias ltree='find . -type d | head -30 | sed "s/[^-][^\/]*\//  |__/g; s/|__/  /"'
+
+# ── File operations (safe defaults) ─────────────────────────────────────────
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# ── System info ─────────────────────────────────────────────────────────────
+alias mem='free -h'
+alias disk='df -h --total'
+alias myip='curl -s ifconfig.me; echo'
+
+# ── Search & text ───────────────────────────────────────────────────────────
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+
+# ── Git extras (beyond git plugin) ─────────────────────────────────────────
+alias glog='git log --oneline --graph --decorate --all'
+alias gstash='git stash list'
+alias gunstage='git reset HEAD'
+alias gclean='git clean -fdx --dry-run'
+
 # ── Atuin (shell history sync) ──────────────────────────────────────────────
 [[ -f "$HOME/.atuin/bin/env" ]] && . "$HOME/.atuin/bin/env"
 eval "$(atuin init zsh)"

@@ -2,6 +2,20 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.4] - 2026-05-04
+
+### Added
+- Comprehensive aliases in .zshrc:
+  - Navigation: `..`, `...`, `....`, `-` (cd to previous)
+  - Directory: `md` (mkdir -p), `take` (mkdir + cd)
+  - Listing: `l` (detailed all), `la` (all incl hidden), `ll` (detailed),
+    `lsd` (dirs only), `lt` (newest 20), `ltree` (tree view)
+  - Safe ops: `rm`, `cp`, `mv` with `-i` (confirm overwrite)
+  - System: `mem` (free -h), `disk` (df -h --total), `myip` (public IP)
+  - Search: `grep`, `egrep`, `fgrep` with `--color=auto`
+  - Git extras: `glog` (graph log), `gstash` (stash list),
+    `gunstage` (reset HEAD), `gclean` (dry-run clean)
+
 ## [0.5.3] - 2026-05-04
 
 ### Fixed
