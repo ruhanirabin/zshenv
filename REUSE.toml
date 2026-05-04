@@ -1,0 +1,19 @@
+version = 1
+
+[[annotations]]
+path = "config/zshrc.example"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Ruhani Rabin (Rabin)"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ".gitignore"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Ruhani Rabin (Rabin)"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "AGENTS.md"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Ruhani Rabin (Rabin)"
+SPDX-License-Identifier = "MIT"
