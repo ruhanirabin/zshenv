@@ -2,6 +2,12 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.3] - 2026-05-04
+
+### Fixed
+- Missing `export ZSH="$HOME/.oh-my-zsh"` in .zshrc template — caused
+  `no such file or directory: /oh-my-zsh.sh` on fresh installs
+
 ## [0.5.2] - 2026-05-04
 
 ### Added
