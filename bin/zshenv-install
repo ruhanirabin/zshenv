@@ -40,6 +40,21 @@ BACKUP_DIR=""
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 ROLLBACK_SCRIPT=""
 
+# ── Prompt helper ────────────────────────────────────────────────────────────
+# prompt_confirm "message" -- returns 0 for yes, 1 for no
+prompt_confirm() {
+  if $DRY_RUN; then
+    log_info "[DRY-RUN] Would prompt: $*"
+    return 0
+  fi
+  echo ""
+  read -rp "$* [Y/n] " response
+  case "${response:-Y}" in
+    [Yy]*|"") return 0 ;;
+    *)        return 1 ;;
+  esac
+}
+
 # ── Plugin definitions ───────────────────────────────────────────────────────
 # Key: plugin directory name | Value: git clone URL
 declare -A PLUGINS=(
@@ -71,7 +86,8 @@ ENABLE_CORRECTION="true"
 COMPLETION_WAITING_DOTS="true"
 
 # ── Plugins ─────────────────────────────────────────────────────────────────
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
+# common-aliases provides: l, la, ll, rm -i, cp -i, mv -i, grep --color, etc.
+plugins=(git common-aliases zsh-autosuggestions zsh-syntax-highlighting)
 
 # ── Completion behaviour ────────────────────────────────────────────────────
 zstyle '"'"':completion:*'"'"' menu select          # arrow-key navigation in tab menu
@@ -81,6 +97,8 @@ zstyle '"'"':completion:*'"'"' matcher-list '"'"'m:{a-zA-Z}={A-Za-z}'"'"'  # cas
 source $ZSH/oh-my-zsh.sh
 
 # ── Personal aliases ────────────────────────────────────────────────────────
+# Note: l, la, ll, rm -i, cp -i, mv -i, grep --color are provided by
+# the common-aliases plugin (loaded above).
 alias zshconfig="nano ~/.zshrc"
 alias ohmyzsh="nano ~/.oh-my-zsh"
 
@@ -94,28 +112,14 @@ alias -- -='cd -'
 alias md='mkdir -p'
 take() { mkdir -p "$1" && cd "$1"; }
 
-# ── Listing ─────────────────────────────────────────────────────────────────
-alias l='ls -lAh --color=auto'
-alias la='ls -A --color=auto'
-alias ll='ls -lh --color=auto'
+# ── Listing (complements common-aliases) ────────────────────────────────────
 alias lsd='ls -d */'
-alias lt='ls -lt --color=auto | head -20'    # newest first, top 20
-alias ltree='find . -type d | head -30 | sed "s/[^-][^\/]*\//  |__/g; s/|__/  /"'
-
-# ── File operations (safe defaults) ─────────────────────────────────────────
-alias rm='rm -i'
-alias cp='cp -i'
-alias mv='mv -i'
+alias ltree='find . -maxdepth 2 -type d | head -20 | sed "s/[^-][^\/]*\//  |__/g; s/|__/  /"'
 
 # ── System info ─────────────────────────────────────────────────────────────
 alias mem='free -h'
 alias disk='df -h --total'
 alias myip='curl -s ifconfig.me; echo'
-
-# ── Search & text ───────────────────────────────────────────────────────────
-alias grep='grep --color=auto'
-alias egrep='egrep --color=auto'
-alias fgrep='fgrep --color=auto'
 
 # ── Git extras (beyond git plugin) ─────────────────────────────────────────
 alias glog='git log --oneline --graph --decorate --all'
@@ -214,31 +218,24 @@ check_dependencies() {
     return 0
   fi
 
-  # Prompt user for confirmation
-  echo ""
   echo -e "${YELLOW}[PROMPT]${NC}  The following packages are required: ${missing[*]}"
   echo "         Run: apt-get install -y ${missing[*]}"
-  echo ""
-  read -rp "Install now? [Y/n] " response
-  case "${response:-Y}" in
-    [Yy]*|"")
-      log_info "Installing: ${missing[*]}..."
-      apt-get update -qq
-      apt-get install -y -qq "${missing[@]}"
-      for cmd in "${missing[@]}"; do
-        if command -v "$cmd" &>/dev/null; then
-          log_ok "$cmd installed: $($cmd --version 2>/dev/null | head -1)"
-        else
-          log_err "$cmd installation failed"
-          return 1
-        fi
-      done
-      ;;
-    *)
-      log_err "Dependencies not installed -- cannot continue"
-      return 1
-      ;;
-  esac
+  if prompt_confirm "Install now?"; then
+    log_info "Installing: ${missing[*]}..."
+    apt-get update -qq
+    apt-get install -y -qq "${missing[@]}"
+    for cmd in "${missing[@]}"; do
+      if command -v "$cmd" &>/dev/null; then
+        log_ok "$cmd installed: $($cmd --version 2>/dev/null | head -1)"
+      else
+        log_err "$cmd installation failed"
+        return 1
+      fi
+    done
+  else
+    log_err "Dependencies not installed -- cannot continue"
+    return 1
+  fi
 }
 
 # ── Step 1: Distro compatibility ─────────────────────────────────────────────
@@ -328,16 +325,18 @@ install_ohmyzsh() {
   user_home=$(eval echo "~$user")
 
   if [[ -d "$user_home/.oh-my-zsh" ]]; then
-    log_ok "Oh My Zsh already installed for $user"
-    return 0
-  fi
-
-  if $DRY_RUN; then
+    if prompt_confirm "Oh My Zsh is already installed for $user. Reinstall and overwrite plugins?"; then
+      log_info "Reinstalling Oh My Zsh for $user..."
+    else
+      log_info "Keeping existing Oh My Zsh for $user"
+      return 0
+    fi
+  elif $DRY_RUN; then
     log_info "[DRY-RUN] Would install Oh My Zsh for $user"
     return 0
+  else
+    log_info "Installing Oh My Zsh for $user (non-interactive)..."
   fi
-
-  log_info "Installing Oh My Zsh for $user (non-interactive)..."
 
   # Primary: pipe install script with env vars set
   su - "$user" -c 'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | RUNZSH=no CHSH=no sh -s -- --unattended' 2>&1 || {
@@ -395,11 +394,18 @@ write_zshrc() {
   user_home=$(eval echo "~$user")
   local zshrc="$user_home/.zshrc"
 
-  # Backup existing .zshrc
+  # Backup and prompt for existing .zshrc
   if [[ -f "$zshrc" ]]; then
     local backup_file="${BACKUP_DIR}/${user}_zshrc_${TIMESTAMP}.bak"
     cp "$zshrc" "$backup_file"
     log_ok "Backed up $user .zshrc -> $backup_file"
+
+    if prompt_confirm "$user has an existing .zshrc. Overwrite with zshenv config?"; then
+      log_info "Overwriting $user .zshrc with zshenv config..."
+    else
+      log_info "Keeping existing .zshrc for $user (skipping write)"
+      return 0
+    fi
   fi
 
   if $DRY_RUN; then
@@ -424,16 +430,18 @@ install_atuin() {
   user_home=$(eval echo "~$user")
 
   if [[ -x "$user_home/.atuin/bin/atuin" ]]; then
-    log_ok "Atuin already installed for $user"
-    return 0
-  fi
-
-  if $DRY_RUN; then
+    if prompt_confirm "Atuin is already installed for $user. Reinstall?"; then
+      log_info "Reinstalling Atuin for $user..."
+    else
+      log_info "Keeping existing Atuin for $user"
+      return 0
+    fi
+  elif $DRY_RUN; then
     log_info "[DRY-RUN] Would install Atuin for $user"
     return 0
+  else
+    log_info "Installing Atuin for $user (non-interactive)..."
   fi
-
-  log_info "Installing Atuin for $user (non-interactive)..."
   su - "$user" -c 'curl --proto "=https" --tlsv1.2 -LsSf https://setup.atuin.sh | sh -s -- --non-interactive' 2>&1 || {
     log_err "Atuin installation failed for $user"
     return 1

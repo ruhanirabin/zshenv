@@ -2,6 +2,18 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.5] - 2026-05-04
+
+### Added
+- `common-aliases` plugin added to plugins list (provides `l`, `la`, `ll`,
+  `rm -i`, `cp -i`, `mv -i`, `grep --color`, etc.)
+- Removed duplicate aliases from .zshrc template (now handled by plugin)
+- `prompt_confirm` helper function for consistent Y/n prompts
+- Overwrite prompt for existing .zshrc (backs up first, then asks)
+- Reinstall prompt for existing Oh My Zsh installation
+- Reinstall prompt for existing Atuin installation
+- All prompts default to yes (Y), respect `--dry-run`
+
 ## [0.5.4] - 2026-05-04
 
 ### Added

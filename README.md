@@ -80,7 +80,7 @@ sudo ./install.sh --dry-run
 | Default shell | `chsh` to `/usr/bin/zsh` (added to `/etc/shells`) |
 | Oh My Zsh | Non-interactive install (`RUNZSH=no CHSH=no --unattended`) |
 | Theme | `fino-time` (bundled with OMZ) |
-| Plugins | `zsh-autosuggestions`, `zsh-syntax-highlighting` (cloned to `$ZSH_CUSTOM/plugins/`) |
+| Plugins | `git`, `common-aliases`, `zsh-autosuggestions`, `zsh-syntax-highlighting` |
 | Atuin | Non-interactive install (`--non-interactive`) |
 | .zshrc | Full config with theme, plugins, completion, aliases, Atuin init |
 
