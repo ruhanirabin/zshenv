@@ -151,6 +151,56 @@ resolve_users() {
   log_info "Target users: ${TARGET_USERS[*]}"
 }
 
+# ── Step 0: Check required dependencies ──────────────────────────────────────
+check_dependencies() {
+  log_info "Checking required dependencies..."
+  local missing=()
+
+  for cmd in git curl; do
+    if ! command -v "$cmd" &>/dev/null; then
+      missing+=("$cmd")
+    fi
+  done
+
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    log_ok "All dependencies satisfied: git, curl"
+    return 0
+  fi
+
+  log_warn "Missing dependencies: ${missing[*]}"
+
+  if $DRY_RUN; then
+    log_info "[DRY-RUN] Would run: apt-get install -y ${missing[*]}"
+    return 0
+  fi
+
+  # Prompt user for confirmation
+  echo ""
+  echo -e "${YELLOW}[PROMPT]${NC}  The following packages are required: ${missing[*]}"
+  echo "         Run: apt-get install -y ${missing[*]}"
+  echo ""
+  read -rp "Install now? [Y/n] " response
+  case "${response:-Y}" in
+    [Yy]*|"")
+      log_info "Installing: ${missing[*]}..."
+      apt-get update -qq
+      apt-get install -y -qq "${missing[@]}"
+      for cmd in "${missing[@]}"; do
+        if command -v "$cmd" &>/dev/null; then
+          log_ok "$cmd installed: $($cmd --version 2>/dev/null | head -1)"
+        else
+          log_err "$cmd installation failed"
+          return 1
+        fi
+      done
+      ;;
+    *)
+      log_err "Dependencies not installed -- cannot continue"
+      return 1
+      ;;
+  esac
+}
+
 # ── Step 1: Distro compatibility ─────────────────────────────────────────────
 check_distro() {
   log_info "Checking distro compatibility..."
@@ -493,6 +543,9 @@ main() {
   if [[ $EUID -ne 0 ]]; then
     log_warn "Not running as root -- some features may fail (chsh, usermod)"
   fi
+
+  # Preflight: required dependencies
+  check_dependencies
 
   # Distro check
   check_distro

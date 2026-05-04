@@ -49,6 +49,7 @@ bin/zshenv-install version
 
 ## Dependency Order (internal)
 
+0. Check required dependencies (git, curl — prompt to install if missing)
 1. Check distro compatibility
 2. Install ZSH
 3. Set ZSH as default shell (add to /etc/shells first)

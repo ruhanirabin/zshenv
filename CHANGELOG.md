@@ -2,6 +2,13 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.2] - 2026-05-04
+
+### Added
+- Preflight dependency check for `git` and `curl`
+- User prompt to install missing dependencies before proceeding
+- Graceful abort if user declines to install required packages
+
 ## [0.5.1] - 2026-05-04
 
 ### Added
