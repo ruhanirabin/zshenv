@@ -66,6 +66,10 @@ sudo ./install.sh --all
 # Preview without making changes
 sudo ./install.sh --dry-run
 
+# Repair Atuin: full cleanup + reinstall (fixes delays/corruption)
+sudo ./install.sh --repair-atuin
+sudo ./install.sh --repair-atuin --user alice
+
 # Show version
 ./bin/zshenv-install version
 ```
@@ -96,7 +100,7 @@ zstyle ':omz:update' mode auto
 zstyle ':omz:update' frequency 13
 ENABLE_CORRECTION="true"
 COMPLETION_WAITING_DOTS="true"
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
+plugins=(git common-aliases zsh-autosuggestions zsh-syntax-highlighting)
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 ```
@@ -187,6 +191,22 @@ apt-get install -y git curl
 ```bash
 ls -la ~/.atuin/bin/atuin
 ~/.atuin/bin/atuin --version
+```
+
+**Atuin causing 2-4s command delay or history not recording**
+
+Full nuclear repair (backs up data first, then clean reinstall):
+
+```bash
+sudo ./install.sh --repair-atuin
+sudo ./install.sh --repair-atuin --user alice
+```
+
+Manual rollback of a specific repair backup:
+
+```bash
+ls /root/.zshenv-backups/<timestamp>/<user>_atuin_<timestamp>/
+cp -a /root/.zshenv-backups/<timestamp>/<user>_atuin_<timestamp>/.atuin ~/.atuin
 ```
 
 **Plugins not loading**

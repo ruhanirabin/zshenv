@@ -35,6 +35,7 @@ log_err()   { echo -e "${RED}[ERR]${NC}   $*"; }
 
 # ── Globals ──────────────────────────────────────────────────────────────────
 DRY_RUN=false
+MODE="install"
 TARGET_USERS=()
 BACKUP_DIR=""
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -155,18 +156,23 @@ parse_args() {
         DRY_RUN=true
         shift
         ;;
+      --repair-atuin)
+        MODE="repair_atuin"
+        shift
+        ;;
       version|--version|-v)
         echo "zshenv-install ${ZSHENV_VERSION}"
         exit 0
         ;;
       --help|-h)
-        echo "Usage: $0 [--user user1,user2] [--all] [--dry-run] [version]"
+        echo "Usage: $0 [--user user1,user2] [--all] [--dry-run] [--repair-atuin] [version]"
         echo ""
         echo "Options:"
-        echo "  --user u1,u2   Install for specific user(s)"
-        echo "  --all          Install for all non-system users (UID >= 1000)"
-        echo "  --dry-run      Print actions without executing"
-        echo "  version        Show version"
+        echo "  --user u1,u2      Install for specific user(s)"
+        echo "  --all             Install for all non-system users (UID >= 1000)"
+        echo "  --dry-run         Print actions without executing"
+        echo "  --repair-atuin    Full cleanup + reinstall Atuin for target user(s)"
+        echo "  version           Show version"
         exit 0
         ;;
       *)
@@ -458,6 +464,95 @@ install_atuin() {
   fi
 }
 
+# ── Repair Atuin: full cleanup + reinstall ───────────────────────────────────
+repair_atuin() {
+  local user="$1"
+  local user_home
+  user_home=$(eval echo "~$user")
+
+  log_info "===================================================="
+  log_info "Atuin repair for user: $user"
+  log_info "===================================================="
+
+  # Step 1: Backup existing Atuin data
+  local atuin_backup="${BACKUP_DIR}/${user}_atuin_${TIMESTAMP}"
+  if [[ -d "$user_home/.atuin" ]] || [[ -d "$user_home/.config/atuin" ]] || [[ -d "$user_home/.local/share/atuin" ]]; then
+    if $DRY_RUN; then
+      log_info "[DRY-RUN] Would backup Atuin data to $atuin_backup"
+    else
+      mkdir -p "$atuin_backup"
+      [[ -d "$user_home/.atuin" ]]          && cp -a "$user_home/.atuin" "$atuin_backup/"
+      [[ -d "$user_home/.config/atuin" ]]    && cp -a "$user_home/.config/atuin" "$atuin_backup/"
+      [[ -d "$user_home/.local/share/atuin" ]] && cp -a "$user_home/.local/share/atuin" "$atuin_backup/"
+      log_ok "Backed up Atuin data -> $atuin_backup"
+    fi
+  else
+    log_warn "No existing Atuin data found for $user -- clean install will be performed"
+  fi
+
+  # Step 2: Nuke all Atuin traces
+  if $DRY_RUN; then
+    log_info "[DRY-RUN] Would remove Atuin binary, config, and data for $user"
+  else
+    log_info "Removing Atuin binary..."
+    rm -rf "$user_home/.atuin"
+    log_info "Removing Atuin config..."
+    rm -rf "$user_home/.config/atuin"
+    log_info "Removing Atuin data directory..."
+    rm -rf "$user_home/.local/share/atuin"
+    log_ok "All Atuin traces removed for $user"
+  fi
+
+  # Step 3: Clean .zshrc of old Atuin lines
+  local zshrc="$user_home/.zshrc"
+  if [[ -f "$zshrc" ]]; then
+    if $DRY_RUN; then
+      log_info "[DRY-RUN] Would strip Atuin lines from $zshrc"
+    else
+      # Backup .zshrc before editing
+      local zshrc_bak="${BACKUP_DIR}/${user}_zshrc_pre_atuin_repair_${TIMESTAMP}.bak"
+      cp "$zshrc" "$zshrc_bak"
+      chown "${user}:${user}" "$zshrc_bak"
+      # Remove Atuin lines (both active and commented)
+      sed -i '/atuin/d' "$zshrc"
+      chown "${user}:${user}" "$zshrc"
+      log_ok "Cleaned Atuin references from $user .zshrc"
+    fi
+  fi
+
+  # Step 4: Fresh install
+  install_atuin "$user"
+
+  # Step 5: Re-inject Atuin lines into .zshrc if they're missing
+  if [[ -f "$zshrc" ]]; then
+    if ! grep -q 'atuin init' "$zshrc"; then
+      if $DRY_RUN; then
+        log_info "[DRY-RUN] Would re-add Atuin init lines to $zshrc"
+      else
+        # Remove any stray trailing blank lines first
+        sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$zshrc"
+        cat >> "$zshrc" << 'ATUIN_EOF'
+
+# ── Atuin (shell history sync) ──────────────────────────────────────────────
+[[ -f "$HOME/.atuin/bin/env" ]] && . "$HOME/.atuin/bin/env"
+eval "$(atuin init zsh)"
+ATUIN_EOF
+        chown "${user}:${user}" "$zshrc"
+        log_ok "Re-added Atuin init lines to $user .zshrc"
+      fi
+    fi
+  fi
+
+  # Step 6: Validate
+  if [[ -x "$user_home/.atuin/bin/atuin" ]]; then
+    log_ok "Atuin repair complete for $user: $($user_home/.atuin/bin/atuin --version 2>/dev/null)"
+    log_info "User should run 'exec zsh' to reload"
+  else
+    log_err "Atuin repair failed for $user -- check logs above"
+    return 1
+  fi
+}
+
 # ── Step 8: Validate ─────────────────────────────────────────────────────────
 validate_install() {
   local user="$1"
@@ -625,7 +720,11 @@ HEADER
   # Process each user
   local failed=0
   for user in "${TARGET_USERS[@]}"; do
-    process_user "$user" || ((failed++))
+    if [[ "$MODE" == "repair_atuin" ]]; then
+      repair_atuin "$user" || ((failed++))
+    else
+      process_user "$user" || ((failed++))
+    fi
   done
 
   # Finalize rollback script
@@ -637,10 +736,15 @@ HEADER
   log_info "Summary"
   log_info "===================================================="
   log_ok "Users processed: ${#TARGET_USERS[@]} (failed: $failed)"
-  log_ok "Backups: $BACKUP_DIR"
-  log_ok "Rollback: $ROLLBACK_SCRIPT"
-  log_info "To rollback: sudo bash $ROLLBACK_SCRIPT"
-  log_info "To reload shell: exec zsh (or logout and login)"
+  if [[ "$MODE" == "repair_atuin" ]]; then
+    log_ok "Mode: Atuin repair"
+    log_ok "Backups: $BACKUP_DIR"
+  else
+    log_ok "Backups: $BACKUP_DIR"
+    log_ok "Rollback: $ROLLBACK_SCRIPT"
+    log_info "To rollback: sudo bash $ROLLBACK_SCRIPT"
+    log_info "To reload shell: exec zsh (or logout and login)"
+  fi
 
   if [[ $failed -gt 0 ]]; then
     log_err "$failed user(s) had errors -- check rollback script"

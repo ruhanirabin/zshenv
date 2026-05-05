@@ -2,6 +2,17 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.7] - 2026-05-04
+
+### Added
+- `--repair-atuin` mode: full cleanup + reinstall of Atuin for target user(s)
+  - Backs up existing Atuin data (binary, config, history DB) before nuking
+  - Strips all Atuin references from .zshrc (including commented lines)
+  - Fresh install via `setup.atuin.sh --non-interactive`
+  - Re-injects Atuin init lines into .zshrc if missing
+  - Works with `--user`, `--all` for multi-user repair
+- Backup path for Atuin data shown in summary
+
 ## [0.5.6] - 2026-05-04
 
 ### Fixed
