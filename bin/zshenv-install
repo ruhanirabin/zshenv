@@ -543,7 +543,8 @@ ATUIN_EOF
     fi
   fi
 
-  # Step 6: Validate
+  # Step 6: Verify load order, then validate
+  verify_atuin_rc_order "$user"
   if [[ -x "$user_home/.atuin/bin/atuin" ]]; then
     log_ok "Atuin repair complete for $user: $($user_home/.atuin/bin/atuin --version 2>/dev/null)"
     log_info "User should run 'exec zsh' to reload"
@@ -551,6 +552,69 @@ ATUIN_EOF
     log_err "Atuin repair failed for $user -- check logs above"
     return 1
   fi
+}
+
+# ── Verify Atuin init order in .zshrc ───────────────────────────────────────
+# The .env source MUST come before 'atuin init' or PATH won't include the binary.
+verify_atuin_rc_order() {
+  local user="$1"
+  local user_home
+  user_home=$(eval echo "~$user")
+  local zshrc="$user_home/.zshrc"
+
+  if [[ ! -f "$zshrc" ]]; then
+    return 0
+  fi
+
+  # Get line numbers of both Atuin directives
+  local env_line init_line
+  env_line=$(grep -n '\. .*\.atuin/bin/env' "$zshrc" | tail -1 | cut -d: -f1)
+  init_line=$(grep -n 'atuin init zsh' "$zshrc" | tail -1 | cut -d: -f1)
+
+  # Both lines must exist
+  if [[ -z "$env_line" || -z "$init_line" ]]; then
+    log_warn "Incomplete Atuin config in $user .zshrc -- lines missing"
+    return 1
+  fi
+
+  # If env line comes BEFORE init line, we're good
+  if [[ "$env_line" -lt "$init_line" ]]; then
+    log_ok "Atuin load order correct in $user .zshrc (env:$env_line < init:$init_line)"
+    return 0
+  fi
+
+  # Wrong order -- fix it
+  if $DRY_RUN; then
+    log_info "[DRY-RUN] Would swap Atuin lines in $user .zshrc"
+    return 0
+  fi
+
+  log_warn "Atuin lines reversed in $user .zshrc (env:$env_line > init:$init_line) -- fixing"
+
+  # Use Python for reliable line swap (avoids sed escaping issues with $HOME etc)
+  python3 -c "
+import sys
+lines = open(sys.argv[1]).readlines()
+env_idx = int(sys.argv[2]) - 1
+init_idx = int(sys.argv[3]) - 1
+
+env_line_content = lines[env_idx]
+init_line_content = lines[init_idx]
+
+# Remove both (higher index first)
+del lines[max(env_idx, init_idx)]
+del lines[min(env_idx, init_idx)]
+
+# Insert at the original init position: env first, then init
+lines.insert(min(env_idx, init_idx), env_line_content)
+lines.insert(min(env_idx, init_idx) + 1, init_line_content)
+
+open(sys.argv[1], 'w').writelines(lines)
+" "$zshrc" "$env_line" "$init_line"
+
+  chown "${user}:${user}" "$zshrc"
+  log_ok "Fixed Atuin load order in $user .zshrc"
+  return 0
 }
 
 # ── Step 8: Validate ─────────────────────────────────────────────────────────
@@ -586,6 +650,17 @@ validate_install() {
   if [[ ! -x "$user_home/.atuin/bin/atuin" ]]; then
     log_err "Atuin binary missing for $user"
     ((errors++))
+  fi
+
+  # Check Atuin load order in .zshrc (env must come before init)
+  if [[ -f "$user_home/.zshrc" ]]; then
+    local env_line init_line
+    env_line=$(grep -n '\. .*\.atuin/bin/env' "$user_home/.zshrc" 2>/dev/null | tail -1 | cut -d: -f1 || true)
+    init_line=$(grep -n 'atuin init zsh' "$user_home/.zshrc" 2>/dev/null | tail -1 | cut -d: -f1 || true)
+    if [[ -n "$env_line" && -n "$init_line" && "$env_line" -gt "$init_line" ]]; then
+      log_err "Atuin load order wrong for $user: env ($env_line) must come before init ($init_line)"
+      ((errors++))
+    fi
   fi
 
   # Check default shell
@@ -676,7 +751,8 @@ process_user() {
   install_plugins "$user"           # Step 4: clone plugins into $ZSH_CUSTOM
   write_zshrc "$user"               # Step 5: write .zshrc config
   install_atuin "$user"             # Step 6: install Atuin
-  validate_install "$user"          # Step 7: validate everything
+  verify_atuin_rc_order "$user"     # Step 7: verify env loads before init
+  validate_install "$user"          # Step 8: validate everything
 }
 
 # ── Entry point ──────────────────────────────────────────────────────────────

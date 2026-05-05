@@ -2,6 +2,16 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.8] - 2026-05-04
+
+### Fixed
+- Atuin `.env` must load before `atuin init` -- added `verify_atuin_rc_order`
+  function that spot-checks .zshrc after install and auto-fixes reversed order
+  - Uses Python for reliable line swap (avoids sed escaping issues with $HOME,
+    quotes, etc.)
+- Validation step now flags reversed Atuin load order as an error
+- Fixes `command not found: atuin` when init runs before PATH is set
+
 ## [0.5.7] - 2026-05-04
 
 ### Added
