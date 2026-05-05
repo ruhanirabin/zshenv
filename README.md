@@ -109,6 +109,42 @@ Plus Atuin init and personal aliases (`zshconfig`, `ohmyzsh`).
 
 ---
 
+## Resource Usage Reporting
+
+The installer includes a commented-out `REPORTTIME` + `TIMEFMT` section in `.zshrc`.
+When uncommented, Zsh automatically prints resource usage for any command that runs
+longer than the specified threshold:
+
+```bash
+# Uncomment these lines in ~/.zshrc to enable:
+REPORTTIME=5
+TIMEFMT='%J  %U user, %S system, %P cpu, %M maxmem, %*E total'
+```
+
+**Example output** (when `sleep 6` runs with `REPORTTIME=5`):
+
+```
+sleep 6  0.00 user, 0.00 system, 0% cpu, 1152 maxmem, 6.003 total
+```
+
+**Format specifiers:**
+
+| Spec | Meaning |
+|------|---------|
+| `%J` | command name + arguments |
+| `%U` | user CPU time (seconds) |
+| `%S` | system/kernel CPU time (seconds) |
+| `%P` | CPU percentage used |
+| `%M` | maximum resident set size (KB) |
+| `%*E` | wall clock elapsed time (seconds) |
+
+**Use cases:**
+- `REPORTTIME=0` — report every command
+- `REPORTTIME=5` — only report commands taking > 5s (recommended)
+- Debug slow pipelines, spot memory hogs, profile build steps
+
+---
+
 ## Backup & Rollback
 
 Every run creates:

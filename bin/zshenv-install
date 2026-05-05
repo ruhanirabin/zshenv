@@ -65,16 +65,16 @@ prompt_select() {
   local default="${options[0]}"
 
   if $DRY_RUN; then
-    log_info "[DRY-RUN] Would prompt: $msg -> $default"
+    log_info "[DRY-RUN] Would prompt: $msg -> $default" >&2
     echo "$default"
     return 0
   fi
 
-  echo ""
+  echo "" >&2
   for i in "${!options[@]}"; do
-    echo "  $((i + 1)). ${options[$i]}"
+    echo "  $((i + 1)). ${options[$i]}" >&2
   done
-  echo ""
+  echo "" >&2
   read -rp "$msg [1]: " response
   local idx=$((response - 1))
   if [[ $idx -ge 0 && $idx -lt ${#options[@]} ]]; then
@@ -157,6 +157,12 @@ alias glog='git log --oneline --graph --decorate --all'
 alias gstash='git stash list'
 alias gunstage='git reset HEAD'
 alias gclean='git clean -fdx --dry-run'
+
+# ── Resource usage reporting ──────────────────────────────────────────────
+# Auto-report resource usage for commands running longer than N seconds.
+# Format: command, user time, system time, CPU %, max memory, total elapsed.
+# REPORTTIME=5
+# TIMEFMT='%J  %U user, %S system, %P cpu, %M maxmem, %*E total'
 
 # ── Atuin (shell history sync) ──────────────────────────────────────────────
 [[ -f "$HOME/.atuin/bin/env" ]] && . "$HOME/.atuin/bin/env"
@@ -445,12 +451,7 @@ write_zshrc() {
     fi
   fi
 
-  if $DRY_RUN; then
-    log_info "[DRY-RUN] Would write .zshrc for $user"
-    return 0
-  fi
-
-  # Prompt for theme selection
+  # Prompt for theme selection (works in dry-run too)
   log_info "Select Oh My Zsh theme for $user..."
   local selected_theme
   selected_theme=$(prompt_select "Choose theme" "jonathan" "fino-time")

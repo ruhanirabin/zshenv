@@ -2,6 +2,15 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.10] - 2026-05-05
+
+### Added
+- Commented-out `REPORTTIME` + `TIMEFMT` section in .zshrc template
+  - Auto-reports resource usage for commands exceeding a time threshold
+  - Shows user time, system time, CPU %, max memory, total elapsed
+  - Set `REPORTTIME=0` for every command, `REPORTTIME=5` for slow commands only
+- Full README documentation with format specifiers table and use cases
+
 ## [0.5.9] - 2026-05-04
 
 ### Added
