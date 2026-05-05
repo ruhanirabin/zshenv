@@ -83,7 +83,7 @@ sudo ./install.sh --repair-atuin --user alice
 | ZSH | Package: `zsh` (via apt) |
 | Default shell | `chsh` to `/usr/bin/zsh` (added to `/etc/shells`) |
 | Oh My Zsh | Non-interactive install (`RUNZSH=no CHSH=no --unattended`) |
-| Theme | `fino-time` (bundled with OMZ) |
+| Theme | `jonathan` (default) or `fino-time` (selectable at install) |
 | Plugins | `git`, `common-aliases`, `zsh-autosuggestions`, `zsh-syntax-highlighting` |
 | Atuin | Non-interactive install (`--non-interactive`) |
 | .zshrc | Full config with theme, plugins, completion, aliases, Atuin init |
@@ -95,7 +95,7 @@ sudo ./install.sh --repair-atuin --user alice
 The installer writes a complete `.zshrc` with these settings:
 
 ```bash
-ZSH_THEME="fino-time"
+ZSH_THEME="jonathan"      # or fino-time (selectable at install)
 zstyle ':omz:update' mode auto
 zstyle ':omz:update' frequency 13
 ENABLE_CORRECTION="true"

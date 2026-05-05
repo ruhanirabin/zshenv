@@ -2,6 +2,15 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.9] - 2026-05-04
+
+### Added
+- Theme selection prompt during install: `jonathan` (default) or `fino-time`
+  - `jonathan` is now the default theme -- clean, futuristic look
+  - User picks by entering 1 or 2 at install time; empty input = `jonathan`
+  - Non-interactive/dry-run defaults to `jonathan`
+- `{THEME}` placeholder in .zshrc template (replaced at runtime)
+
 ## [0.5.8] - 2026-05-04
 
 ### Fixed
